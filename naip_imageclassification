@@ -1,0 +1,50 @@
+// Load NAIP ImageCollection for the specified date range and area
+var naipCollection = ee.ImageCollection('USDA/NAIP/DOQQ')
+  .filterBounds(watershed) // Filters the collection to the watershed area
+  .filterDate('2018-01-01', '2018-12-31'); // Filters the collection to the year 2018
+var naip = naipCollection.mosaic(); // Creates a mosaic from the filtered collection
+var bands = ['R', 'G', 'B','N']; // Specifies the bands to be used
+
+// Visualization parameters for displaying the images
+var trueColorVis = {
+  min: 0.0,
+  max: 255.0,
+};
+
+// Adds NAIP and watershed layers to the map for visualization
+Map.addLayer(naip, trueColorVis, 'NAIP');
+Map.addLayer(watershed,[],'watershed');
+
+// Merge different training polygons for supervised classification
+var points = veg.merge(urban).merge(water); // Merging vegetation, urban, and water feature collections
+var label = 'classname'; // The property name for class labels in the feature collection
+
+// Overlay the points on the NAIP imagery to create a training dataset
+var training = naip.select(bands).sampleRegions({
+  collection: points,
+  properties: [label],
+  scale: 1
+});
+
+// Train a classifier using the training data
+// First, a CART classifier is trained (this line can be removed if only using Random Forest)
+var trained = ee.Classifier.smileCart().train(training, label, bands);
+// Then, a Random Forest classifier with 50 trees is trained
+trained = ee.Classifier.smileRandomForest(50).train(training, label);
+
+// Classify the NAIP imagery using the trained classifier
+var classified = naip.select(bands).classify(trained);
+
+// Add the classified layer to the map with specified visualization parameters
+Map.addLayer(classified,
+            {min: 1, max: 3, palette: ['red','yellow','blue']},
+            'classification');
+
+// Export the classified image to Google Drive
+Export.image.toDrive({
+  image: classified,
+  description: 'naip_classification',
+  region: watershed,
+  scale: 1,
+  maxPixels: 1e13,
+});
