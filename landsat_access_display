@@ -1,0 +1,28 @@
+// Accessing a watershed shapefile stored in a user's folder on Google Earth Engine
+// Note: This shapefile is publicly accessible and located in Yang Shao's folder.
+// Users can import their own shapefile using GEE's Assets tool.
+var watershed = ee.FeatureCollection("users/yshao/phenology/watershed1");
+
+// Accessing a Landsat 8 image from the GEE data catalog
+// This particular image is the same as what one might download from USGS GloVis.
+var image1 = ee.Image('LANDSAT/LC08/C02/T1_L2/LC08_015033_20180708');
+
+// Setting the map's center to specific coordinates and zoom level
+// The coordinates here are set to a specific location, with a zoom level of 9.
+Map.setCenter(-77.2405, 38.7439, 9);
+
+// Adding the Landsat image to the map with a false color composite
+// Bands 5, 4, and 2 (SR_B5, SR_B4, SR_B2) are used for the false color representation.
+Map.addLayer(image1, {bands: ['SR_B5', 'SR_B4', 'SR_B2']}, 'False Color (542)');
+
+// Displaying the watershed shapefile on the map
+// The shapefile is visualized with a specified color.
+Map.addLayer(watershed, {color: '#40E0D0'}, 'watershed');
+
+// Clipping the Landsat image to the watershed boundary
+// This operation restricts the image to the area of the watershed.
+var imageClip = image1.clip(watershed);
+
+// Displaying the clipped image with another set of false color bands
+// This time, bands 7, 5, and 2 (SR_B7, SR_B5, SR_B2) are used.
+Map.addLayer(imageClip, {bands: ['SR_B7', 'SR_B5', 'SR_B2']}, 'False Color (752)');
